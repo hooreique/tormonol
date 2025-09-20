@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "cp-xterm-css": "mkdir -p build && cp node_modules/@xterm/xterm/css/xterm.css build/xterm.css",
+    "build-tw": "tailwindcss -i src/style.css -o build/style.css",
+    "build-es": "esbuild --bundle --outfile=build/client/app.js --tsconfig=tsconfig.esbuild.json src/client/app.tsx",
+    "prepare": "pnpm run cp-xterm-css & pnpm run build-tw & pnpm run build-es & wait",
+    "dev": "tsx watch --tsconfig tsconfig.hono.json src/main.tsx",
+    "build": "pnpm run prepare & tsc --project tsconfig.hono.json & wait",
+    "start": "node out/main.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "1.18.2",
+    "@hono/node-ws": "1.2.0",
+    "hono": "4.9.2",
+    "node-pty": "1.0.0"
+  },
+  "devDependencies": {
+    "@preact/signals": "2.2.1",
+    "@tailwindcss/cli": "4.1.12",
+    "@types/node": "20.11.17",
+    "@xterm/addon-webgl": "0.18.0",
+    "@xterm/xterm": "5.5.0",
+    "esbuild": "0.25.9",
+    "preact": "10.27.0",
+    "tailwindcss": "4.1.12",
+    "tsx": "4.7.1",
+    "typescript": "5.8.3"
+  }
+}

@@ -1,0 +1,262 @@
+import { useContext, useEffect, useRef } from 'preact/hooks';
+import { useSignal } from '@preact/signals';
+import { Show } from '@preact/signals/utils';
+
+import type { Pty } from './pty-proxy.ts';
+import { ModalContext } from './modal.ts';
+import { XtermWrapper } from './XtermWrapper.tsx';
+
+
+const rand96 = () => crypto.getRandomValues(new Uint8Array(12));
+
+const te = new TextEncoder();
+
+const blandSalt = te.encode('bland-salt');
+const blandVect = te.encode('bland-vect');
+
+const UP: Readonly<Uint8Array> = te.encode('client -> server');
+const DN: Readonly<Uint8Array> = te.encode('server -> client');
+
+export const TerminalBox = () => {
+  const modal = useContext(ModalContext);
+
+  const connectButton = useRef<HTMLButtonElement>();
+
+  const pty = useSignal<Pty>();
+  const healthy = useSignal(false);
+  const disconnect = useSignal(() => { });
+
+  const connect = (pri: ArrayBuffer) => Promise.all([
+    fetch('/api/nonce', { method: 'post' }).then(res => {
+      if (res.ok) return res.text();
+      else throw { message: 'response is not ok' };
+    }),
+    crypto.subtle.importKey('pkcs8', pri, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']),
+  ])
+    .then(([nonce, privateKey]) => Promise.all([
+      crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, Uint8Array.fromBase64(nonce))
+        .then(signature => new Uint8Array(signature).toBase64())
+        .then(sig => fetch('/api/ticket', {
+          method: 'post',
+          body: nonce + '.' + sig,
+        }).then(res => {
+          if (res.ok) return res.text();
+          else throw { message: 'response is not ok' };
+        }))
+        .then(ticket => ticket.split('.')),
+      crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']),
+    ]))
+    .then(([[id, pub], { privateKey, publicKey }]) => Promise.all([
+      crypto.subtle.exportKey('spki', publicKey)
+        .then(pub => fetch('/api/salt', {
+          method: 'post',
+          body: id + '.' + new Uint8Array(pub).toBase64(),
+        }))
+        .then(res => {
+          if (res.ok) return res.text();
+          else throw { message: 'response is not ok' };
+        })
+        .then(str => str.split('.'))
+        .then(([id, salt]) => ({ id, salt: Uint8Array.fromBase64(salt) })),
+      crypto.subtle.importKey('spki', Uint8Array.fromBase64(pub), { name: 'ECDH', namedCurve: 'P-256' }, false, [])
+        .then(pub => crypto.subtle.deriveBits({ name: 'ECDH', public: pub }, privateKey, 256))
+        .then(buf => crypto.subtle.importKey('raw', buf, 'HKDF', false, ['deriveKey'])),
+    ]))
+    .then(([{ id, salt }, key]) => Promise.all([
+      crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: UP }, key, { name: 'AES-GCM', length: 128 }, false, ['encrypt']),
+      crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt, info: DN }, key, { name: 'AES-GCM', length: 128 }, false, ['decrypt']),
+    ])
+      .then(([upKey, dnKey]) => [
+        (iv: BufferSource, data: BufferSource) => crypto.subtle.encrypt({ name: 'AES-GCM', iv }, upKey, data),
+        (iv: BufferSource, data: BufferSource) => crypto.subtle.decrypt({ name: 'AES-GCM', iv }, dnKey, data),
+      ])
+      .then(([encrypt, decrypt]) => crypto.subtle.importKey('pkcs8', pri, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'])
+        .then(privateKey => crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, Uint8Array.fromBase64(id)))
+        .then(signature => new Uint8Array(signature).toBase64())
+        .then(sig => {
+          const endpoint = new URL('/sockets/' + encodeURIComponent(id), location.origin);
+          endpoint.searchParams.set('token', sig);
+          const ws = new WebSocket(endpoint);
+          ws.binaryType = 'arraybuffer';
+          return ws;
+        })
+        .then(ws => {
+          console.debug('connection:', ws);
+
+          pty.value = {
+            write: data => {
+              const iv = rand96();
+              encrypt(iv, data)
+                .then(buf => new Uint8Array(buf))
+                .then(src => {
+                  const cat = new Uint8Array(12 + src.length);
+                  cat.set(iv, 0);
+                  cat.set(src, 12);
+                  return cat;
+                })
+                .then(cat => {
+                  if (WebSocket.OPEN === ws.readyState) {
+                    ws.send(cat);
+                  } else {
+                    console.debug('could not send (writing to pty): no connection');
+                  }
+                });
+            },
+            onData: consume => {
+              ws.addEventListener('message', ({ data }) => {
+                const cat = new Uint8Array(data as ArrayBuffer);
+                decrypt(cat.subarray(0, 12), cat.subarray(12))
+                  .then(buf => new Uint8Array(buf))
+                  .then(consume);
+              });
+            },
+          };
+
+          ws.addEventListener('open', () => {
+            healthy.value = true;
+          });
+
+          ws.addEventListener('close', ({ code, reason }) => {
+            healthy.value = false;
+
+            setTimeout(() => connectButton.current?.focus(), 100);
+
+            if (code === 4000) {
+              console.debug('connection closed');
+            } else if (code === 4001) {
+              console.debug('connection closed by pty:', reason);
+            } else {
+              console.info('connection closed unexpectedly:', code, reason);
+            }
+          });
+
+          disconnect.value = () => ws.close(4000);
+        })));
+
+  const enter = (password: string) => {
+    if (!password) {
+      return Promise.reject({ message: 'password must not be empty' });
+    }
+
+    // const pri = localStorage.getItem('pri');
+    // console.info('pri:', pri);
+    // const arr = pri.trim().split('\n');
+    // arr.pop();
+    // arr.shift();
+    // const data = Uint8Array.fromBase64(arr.join(''));
+    // console.info('data:', data);
+    // crypto.subtle.importKey('raw', te.encode(value), 'PBKDF2', false, ['deriveKey'])
+    //   .then(key => crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: blandSalt, iterations: 300_000 }, key, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']))
+    //   .then(key => crypto.subtle.encrypt({ name: 'AES-GCM', iv: blandVect }, key, data))
+    //   .then(enc => new Uint8Array(enc).toBase64())
+    //   .then(encPri => localStorage.setItem('encpri', encPri))
+    //   .then(() => {
+    //     const encPri = localStorage.getItem('encpri');
+    //     console.info('encPri:', encPri);
+    //   });
+
+    const encpri = localStorage.getItem('encpri');
+
+    if (!encpri) {
+      return Promise.reject({ message: 'encpri not found' });
+    }
+
+    return crypto.subtle.importKey('raw', te.encode(password), 'PBKDF2', false, ['deriveKey'])
+      .then(key => crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: blandSalt, iterations: 300_000 }, key, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']))
+      .then(key => crypto.subtle.decrypt({ name: 'AES-GCM', iv: blandVect }, key, Uint8Array.fromBase64(encpri)))
+      .catch(() => {
+        throw { message: 'wrong password' };
+      })
+      .then(connect);
+  };
+
+  const ConnectModal = () => {
+    const inputEl = useRef<HTMLInputElement>();
+
+    useEffect(() => {
+      inputEl.current?.focus();
+    });
+
+    return <div class="relative mt-[10px] mr-[6px] mb-[14px] ml-[17px]">
+      <div class="text-2xl tracking-[8pt]">
+        <input
+          ref={inputEl}
+          type="password" autoComplete="off" size={6} maxLength={6}
+          class="opacity-75 font-bold focus:outline-none"
+          onKeyDown={({ currentTarget, key }) => {
+            if (key === 'Enter') {
+              enter(currentTarget.value)
+                .then(() => {
+                  modal.clear();
+                })
+                .catch(err => {
+                  console.error(err);
+                  currentTarget.value = '';
+                });
+            } else if (key === 'Escape') {
+              modal.clear();
+            }
+          }}
+        />
+      </div>
+
+      <div class="absolute top-[5px] text-2xl tracking-[8pt] pointer-events-none">
+        <div class="opacity-75 font-bold">______</div>
+      </div>
+    </div>;
+  };
+
+  useEffect(() => {
+    const listen = ({ key, ctrlKey, altKey, shiftKey }: KeyboardEvent) => {
+      if (healthy.value) return;
+      if (ctrlKey || altKey || shiftKey) return;
+
+      if (key === 'c') {
+        modal.set(<ConnectModal />);
+      }
+    };
+
+    addEventListener('keydown', listen);
+
+    return () => removeEventListener('keydown', listen);
+  });
+
+  return <div class="size-fit p-4 grid gap-4">
+    <div class="flex justify-between items-center">
+      <div>
+        <Show
+          when={healthy}
+          fallback={<button
+            ref={connectButton}
+            class="cursor-pointer hover:underline focus:outline-none"
+            onClick={() => modal.set(<ConnectModal />)}
+          >[<span class="underline">c</span>onnect]</button>}
+        >
+          <button
+            class="cursor-pointer hover:underline"
+            onClick={() => disconnect.value()}
+          >[disconnect]</button>
+        </Show>
+      </div>
+
+      <div>
+        <Show when={pty}>
+          <div class={healthy.value
+            ? 'w-4 h-4 rounded-full bg-[#9DD274]'
+            : 'w-4 h-4 rounded-full bg-[#FF6578]'}></div>
+        </Show>
+      </div>
+    </div>
+
+    <div class="size-fit">
+      <Show
+        when={pty}
+        fallback={<main class="rounded overflow-hidden w-[900px] h-[540px] bg-[#2A2F38] flex justify-center items-center">
+          <article class="text-[#828A9A]">Lorem Ipsum</article>
+        </main>}
+      >
+        {pty => <XtermWrapper pty={pty} key={pty} />}
+      </Show>
+    </div>
+  </div>;
+};

@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+
+:root {
+  font-size: 14px;
+  font-weight: normal;
+  font-family:
+    'Hack Nerd Font',
+    Menlo,
+    Consolas,
+    'DejaVu Sans Mono',
+    monospace;
+}
+
+body {
+  background-color: #24272E;
+}
