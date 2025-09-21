@@ -1,0 +1,12 @@
+{
+  http_port  8080
+  https_port 8443
+}
+
+www.example.com {
+  redir https://www.example.com{uri}
+}
+
+https://www.example.com {
+  reverse_proxy localhost:3000
+}

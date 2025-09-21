@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if (( $# != 1 ))
+then
+  echo "Usage: $0 <path>" >&2
+  exit 1
+fi
+
+if [[ ! -d "$1" ]]
+then
+  echo "$1 not found" >&2
+  exit 1
+fi
+
+SRC_DIR="$(dirname $(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd))"
+TRG_DIR="$(cd $1 && pwd)"
+
+if [[ ! -f "$SRC_DIR/meta/Caddyfile" ]]
+then
+  echo "Caddyfile not found" >&2
+  exit 1
+fi
+
+cd "$SRC_DIR"
+
+nix develop --command pnpm install
+nix develop --command pnpm run build
+
+for dir in out build static
+do
+  cp -r "$SRC_DIR/$dir" "$TRG_DIR"
+done
+
+cp "$SRC_DIR/meta/Caddyfile" "$TRG_DIR/Caddyfile"
