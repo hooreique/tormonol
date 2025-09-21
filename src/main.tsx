@@ -162,11 +162,16 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
         throw { message: 'wrong signature' };
       }
     })
-    .then(() => spawn('zsh', ['-il'], {
+    .then(() => spawn(`${process.env.HOME}/.nix-profile/bin/zsh`, [], {
       name: 'xterm-256color',
       cols: 100,
       rows: 30,
       cwd: process.env.HOME,
+      env: {
+        PATH: `${process.env.HOME}/.nix-profile/bin:/usr/bin`,
+        TERM: 'xterm-256color',
+        COLORTERM: 'truecolor',
+      },
     }))
     .then(pty => ({
       onOpen: (_, ws) => {
