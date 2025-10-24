@@ -23,7 +23,11 @@ app.onError((err, { text }) => {
   return text('500 Internal Server Error', 500);
 });
 
-app.use('*', serveStatic({ root: './static' }));
+// '/static' 은 숨김
+app.use('/favicon.ico', serveStatic({ root: './static' }));
+app.use('/images/*', serveStatic({ root: './static' }));
+app.use('/fonts/*', serveStatic({ root: './static' }));
+// '/build' 는 안 숨김
 app.use('/build/*', serveStatic({ root: './' }));
 
 app.use('*', jsxRenderer(({ children }) => <html>
@@ -31,7 +35,7 @@ app.use('*', jsxRenderer(({ children }) => <html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <meta name="color-scheme" content="dark" />
-    <link rel="icon" sizes="any" href="/hono.svg" type="image/svg+xml" />
+    <link rel="icon" sizes="any" href="/images/hono.svg" type="image/svg+xml" />
     <link href="/build/style.css" rel="stylesheet" />
     <link href="/build/xterm.css" rel="stylesheet" />
   </head>
