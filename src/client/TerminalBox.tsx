@@ -144,8 +144,12 @@ export const TerminalBox = () => {
     // arr.pop();
     // arr.shift();
     // const data = Uint8Array.fromBase64(arr.join(''));
+
+    // const pri = localStorage.getItem('pri');
+    // console.info('pri:', pri);
+    // const data = Uint8Array.fromBase64(pri);
     // console.info('data:', data);
-    // crypto.subtle.importKey('raw', te.encode(value), 'PBKDF2', false, ['deriveKey'])
+    // crypto.subtle.importKey('raw', te.encode(password), 'PBKDF2', false, ['deriveKey'])
     //   .then(key => crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: blandSalt, iterations: 300_000 }, key, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']))
     //   .then(key => crypto.subtle.encrypt({ name: 'AES-GCM', iv: blandVect }, key, data))
     //   .then(enc => new Uint8Array(enc).toBase64())
@@ -154,6 +158,7 @@ export const TerminalBox = () => {
     //     const encPri = localStorage.getItem('encpri');
     //     console.info('encPri:', encPri);
     //   });
+    // return Promise.resolve();
 
     const encpri = localStorage.getItem('encpri');
 

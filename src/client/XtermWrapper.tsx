@@ -15,7 +15,7 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
     cols: 100,
     rows: 30,
     scrollback: 0,
-    fontFamily: "Hack Nerd Font",
+    fontFamily: 'Hack Nerd Font',
     theme: {
       foreground: '#E1E3E4',
       background: '#2A2F38',
