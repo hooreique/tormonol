@@ -1,3 +1,12 @@
+## Prepare Keys
+
+```bash
+mkdir -p ~/.config/tormonol
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 \
+  -out       ~/.config/tormonol/authorized.pri.pem \
+  -outpubkey ~/.config/tormonol/authorized.pub.pem
+```
+
 ## Prepare Fonts
 
 Font Source: https://www.nerdfonts.com/font-downloads
@@ -63,6 +72,10 @@ mkdir -p ~/ws/tormonol
 git clone git@github.com:hooreique/tormonol.git ~/ws/tormonol
 ```
 
+### Prepare Keys on Server
+
+See [Prepare Keys](#prepare-keys).
+
 ### Prepare Fonts on Server
 
 See [Prepare Fonts](#prepare-fonts).
@@ -103,7 +116,8 @@ systemctl --user restart tormonol caddy
 systemctl --user stop tormonol caddy
 systemctl --user disable tormonol caddy
 rm ~/.config/systemd/user/tormonol.service ~/.config/systemd/user/caddy.service
-rm -rf ~/ws/tormonol
+# rm -rf ~/ws/tormonol
+# rm -rf ~/.config/tormonol
 # loginctl disable-linger $USER
 # loginctl show-user $USER | grep Linger
 ```

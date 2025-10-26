@@ -77,10 +77,10 @@ const pub = readFile(process.env.HOME + '/.config/tormonol/authorized.pub.pem')
 # Hint
 
 \`\`\`sh
-mkdir -p $HOME/.config/tormonol
+mkdir -p ~/.config/tormonol
 openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 \\
-  -out       $HOME/.config/tormonol/authorized.pri.pem \\
-  -outpubkey $HOME/.config/tormonol/authorized.pub.pem
+  -out       ~/.config/tormonol/authorized.pri.pem \\
+  -outpubkey ~/.config/tormonol/authorized.pub.pem
 \`\`\`
 `);
     }
