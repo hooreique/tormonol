@@ -175,6 +175,7 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
         PATH: `${process.env.HOME}/.nix-profile/bin:/usr/bin`,
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
+        NODE_PTY: '1',
       },
     }))
     .then(pty => ({
