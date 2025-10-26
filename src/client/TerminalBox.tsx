@@ -1,6 +1,4 @@
-import { useContext, useEffect, useRef } from 'preact/hooks';
-import { useSignal } from '@preact/signals';
-import { Show } from '@preact/signals/utils';
+import { useContext, useEffect, useRef, useState } from 'preact/hooks';
 
 import type { Pty } from './pty-proxy.ts';
 import { ModalContext } from './modal.ts';
@@ -22,9 +20,10 @@ export const TerminalBox = () => {
 
   const connectButton = useRef<HTMLButtonElement>();
 
-  const pty = useSignal<Pty>();
-  const healthy = useSignal(false);
-  const disconnect = useSignal(() => { });
+  const [pty, setPty] = useState<Pty | false>(false);
+  const [ptyKey, setPtyKey] = useState<string>('');
+  const [healthy, setHealthy] = useState<boolean>(false);
+  const disconnect = useRef<() => void>(() => undefined);
 
   const connect = (pri: ArrayBuffer) => Promise.all([
     fetch('/api/nonce', { method: 'post' }).then(res => {
@@ -83,7 +82,9 @@ export const TerminalBox = () => {
         .then(ws => {
           console.debug('connection:', ws);
 
-          pty.value = {
+          setPtyKey(ws.url);
+
+          setPty({
             write: data => {
               const iv = rand96();
               encrypt(iv, data)
@@ -110,14 +111,14 @@ export const TerminalBox = () => {
                   .then(consume);
               });
             },
-          };
+          });
 
           ws.addEventListener('open', () => {
-            healthy.value = true;
+            setHealthy(true);
           });
 
           ws.addEventListener('close', ({ code, reason }) => {
-            healthy.value = false;
+            setHealthy(false);
 
             setTimeout(() => connectButton.current?.focus(), 100);
 
@@ -130,7 +131,7 @@ export const TerminalBox = () => {
             }
           });
 
-          disconnect.value = () => ws.close(4000);
+          disconnect.current = () => ws.close(4000);
         })));
 
   const enter = (password: string) => {
@@ -209,7 +210,7 @@ export const TerminalBox = () => {
 
   useEffect(() => {
     const listen = ({ key, ctrlKey, altKey, shiftKey }: KeyboardEvent) => {
-      if (healthy.value) return;
+      if (healthy) return;
       if (ctrlKey || altKey || shiftKey) return;
 
       if (key === 'c') {
@@ -225,47 +226,59 @@ export const TerminalBox = () => {
   return <div class="size-fit p-4 grid gap-4">
     <div class="flex justify-between items-center">
       <div>
-        <Show
-          when={healthy}
-          fallback={<button
-            ref={connectButton}
-            class="cursor-pointer hover:underline focus:outline-none"
-            onClick={() => modal.set(<ConnectModal />)}
-          >
-            [
-            <span class="italic"><span class="underline">c</span>onnect</span>
-            ]
-          </button>}
-        >
-          <button
-            class="cursor-pointer hover:underline"
-            onClick={() => disconnect.value()}
-          >[<span class="italic">disconnect</span>]</button>
-        </Show>
+        {
+          healthy
+            ?
+            <button
+              class="cursor-pointer hover:underline"
+              onClick={() => {
+                disconnect.current();
+              }}
+            >[<span class="italic">disconnect</span>]</button>
+            :
+            <button
+              ref={connectButton}
+              class="cursor-pointer hover:underline focus:outline-none"
+              onClick={() => modal.set(<ConnectModal />)}
+            >
+              [
+              <span class="italic"><span class="underline">c</span>onnect</span>
+              ]
+            </button>
+        }
       </div>
 
       <div>
-        <Show when={pty}>
-          <div class={healthy.value
-            ? 'w-4 h-4 rounded-full bg-[#9DD274]'
-            : 'w-4 h-4 rounded-full bg-[#FF6578]'}></div>
-        </Show>
+        {
+          pty
+            ?
+            <div class={
+              healthy
+                ?
+                'w-4 h-4 rounded-full bg-[#9DD274]'
+                :
+                'w-4 h-4 rounded-full bg-[#FF6578]'
+            }></div>
+            :
+            undefined
+        }
       </div>
     </div>
 
     <div class="size-fit">
-      <Show
-        when={pty}
-        fallback={<main class="rounded overflow-hidden w-[900px] h-[540px] bg-[#2A2F38] flex justify-center items-center">
-          <article class="text-[#828A9A]">
-            <span class="font-bold">
-              <span class="italic">Tormonol</span> screen
-            </span>
-          </article>
-        </main>}
-      >
-        {pty => <XtermWrapper pty={pty} key={pty} />}
-      </Show>
+      {
+        pty
+          ?
+          <XtermWrapper pty={pty} key={ptyKey} />
+          :
+          <main class="rounded overflow-hidden w-[900px] h-[540px] bg-[#2A2F38] flex justify-center items-center">
+            <article class="text-[#828A9A]">
+              <span class="font-bold">
+                <span class="italic">Tormonol</span> screen
+              </span>
+            </article>
+          </main>
+      }
     </div>
   </div>;
 };
