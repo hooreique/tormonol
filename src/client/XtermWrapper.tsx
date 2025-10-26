@@ -120,6 +120,7 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
 
     return () => {
       term.dispose();
+      pty.close();
     };
   }, []);
 

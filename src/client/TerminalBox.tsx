@@ -21,8 +21,13 @@ export const TerminalBox = () => {
   const connectButton = useRef<HTMLButtonElement>();
 
   const [pty, setPty] = useState<Pty | false>(false);
-  const [ptyKey, setPtyKey] = useState<string>('');
-  const [healthy, setHealthy] = useState<boolean>(false);
+  const [ptyId, setPtyId] = useState<string>('');
+  const [prevPtyId, setPrevPtyId] = useState<string>('');
+  const healthy = pty && (ptyId !== prevPtyId);
+
+  let mutPtyId = '';
+  let mutPrevPtyId = '';
+
   const disconnect = useRef<() => void>(() => undefined);
 
   const connect = (pri: ArrayBuffer) => Promise.all([
@@ -82,45 +87,52 @@ export const TerminalBox = () => {
         .then(ws => {
           console.debug('connection:', ws);
 
-          setPtyKey(ws.url);
-
-          setPty({
-            write: data => {
-              const iv = rand96();
-              encrypt(iv, data)
-                .then(buf => new Uint8Array(buf))
-                .then(src => {
-                  const cat = new Uint8Array(12 + src.length);
-                  cat.set(iv, 0);
-                  cat.set(src, 12);
-                  return cat;
-                })
-                .then(cat => {
-                  if (WebSocket.OPEN === ws.readyState) {
-                    ws.send(cat);
-                  } else {
-                    console.debug('could not send (writing to pty): no connection');
-                  }
-                });
-            },
-            onData: consume => {
-              ws.addEventListener('message', ({ data }) => {
-                const cat = new Uint8Array(data as ArrayBuffer);
-                decrypt(cat.subarray(0, 12), cat.subarray(12))
-                  .then(buf => new Uint8Array(buf))
-                  .then(consume);
-              });
-            },
-          });
+          const id = ws.url;
 
           ws.addEventListener('open', () => {
-            setHealthy(true);
+            setPty({
+              write: data => {
+                const iv = rand96();
+                encrypt(iv, data)
+                  .then(buf => new Uint8Array(buf))
+                  .then(src => {
+                    const cat = new Uint8Array(12 + src.length);
+                    cat.set(iv, 0);
+                    cat.set(src, 12);
+                    return cat;
+                  })
+                  .then(cat => {
+                    if (WebSocket.OPEN === ws.readyState) {
+                      ws.send(cat);
+                    } else {
+                      console.debug('could not send (writing to pty): no connection');
+                    }
+                  });
+              },
+              onData: consume => {
+                ws.addEventListener('message', ({ data }) => {
+                  const cat = new Uint8Array(data as ArrayBuffer);
+                  decrypt(cat.subarray(0, 12), cat.subarray(12))
+                    .then(buf => new Uint8Array(buf))
+                    .then(consume);
+                });
+              },
+              close: () => ws.close(4000),
+            });
+
+            setPtyId(id);
+            mutPtyId = id;
+
+            disconnect.current = () => ws.close(4000);
           });
 
           ws.addEventListener('close', ({ code, reason }) => {
-            setHealthy(false);
+            setPrevPtyId(id);
+            mutPrevPtyId = id;
 
-            setTimeout(() => connectButton.current?.focus(), 100);
+            if (mutPtyId === mutPrevPtyId) {
+              setTimeout(() => connectButton.current?.focus(), 100);
+            }
 
             if (code === 4000) {
               console.debug('connection closed');
@@ -130,8 +142,6 @@ export const TerminalBox = () => {
               console.info('connection closed unexpectedly:', code, reason);
             }
           });
-
-          disconnect.current = () => ws.close(4000);
         })));
 
   const enter = (password: string) => {
@@ -269,7 +279,7 @@ export const TerminalBox = () => {
       {
         pty
           ?
-          <XtermWrapper pty={pty} key={ptyKey} />
+          <XtermWrapper pty={pty} key={ptyId} />
           :
           <main class="rounded overflow-hidden w-[900px] h-[540px] bg-[#2A2F38] flex justify-center items-center">
             <article class="text-[#828A9A]">
