@@ -1,4 +1,4 @@
-import { useContext, useLayoutEffect, useRef } from 'preact/hooks';
+import { useContext, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 
 import { Terminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -46,13 +46,61 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
       },
     });
 
+    const CopyModal = ({ text }: { text: string }) => {
+      const copyBtn = useRef<HTMLButtonElement>();
+
+      useEffect(() => {
+        copyBtn.current.focus();
+      });
+
+      const close = () => {
+        term.focus();
+        modal.clear();
+      };
+
+      const copy = () => navigator.clipboard.writeText(text)
+        .then(close)
+        .catch(console.error);
+
+      return <div class="m-4 grid gap-2">
+        <div class="flex justify-between">
+          <button
+            class="cursor-pointer hover:underline"
+            onClick={close}
+          >
+            [esc] to close
+          </button>
+
+          <button
+            class="cursor-pointer hover:underline focus:outline-none"
+            onClick={copy}
+            ref={copyBtn}
+            onKeyDown={({ key }) => {
+              if (key === 'Escape') close();
+            }}
+          >
+            [␣] to copy
+          </button>
+        </div>
+
+        <div>
+          <pre class="w-80 h-24 overflow-scroll"><code>{text.substring(0, 200)}</code>{
+            text.length > 200
+              ?
+              <code class="opacity-35">...</code>
+              :
+              undefined
+          }</pre>
+        </div>
+      </div>;
+    };
+
     term.parser.registerOscHandler(52, (data: string) => {
       const [command, encoded] = data.split(';');
       if (!encoded || command !== 'c') return false;
 
       const decoded = td.decode(Uint8Array.fromBase64(encoded));
-      console.debug('[OSC52] Copy:', decoded);
-      console.debug('modal', modal);
+      modal.set(<CopyModal text={decoded} />);
       return true;
     });
 
