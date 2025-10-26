@@ -182,12 +182,12 @@ export const TerminalBox = () => {
       inputEl.current?.focus();
     });
 
-    return <div class="relative mt-[10px] mr-[6px] mb-[14px] ml-[17px]">
-      <div class="text-2xl tracking-[8pt]">
+    return <div class="mx-4 my-3">
+      <div class="text-2xl">
         <input
           ref={inputEl}
           type="password" autoComplete="off" size={6} maxLength={6}
-          class="opacity-75 font-bold focus:outline-none"
+          class="w-40 focus:outline-none"
           onKeyDown={({ currentTarget, key }) => {
             if (key === 'Enter') {
               enter(currentTarget.value)
@@ -203,10 +203,6 @@ export const TerminalBox = () => {
             }
           }}
         />
-      </div>
-
-      <div class="absolute top-[5px] text-2xl tracking-[8pt] pointer-events-none">
-        <div class="opacity-75 font-bold">______</div>
       </div>
     </div>;
   };
@@ -235,12 +231,16 @@ export const TerminalBox = () => {
             ref={connectButton}
             class="cursor-pointer hover:underline focus:outline-none"
             onClick={() => modal.set(<ConnectModal />)}
-          >[<span class="underline">c</span>onnect]</button>}
+          >
+            [
+            <span class="italic"><span class="underline">c</span>onnect</span>
+            ]
+          </button>}
         >
           <button
             class="cursor-pointer hover:underline"
             onClick={() => disconnect.value()}
-          >[disconnect]</button>
+          >[<span class="italic">disconnect</span>]</button>
         </Show>
       </div>
 
@@ -257,7 +257,11 @@ export const TerminalBox = () => {
       <Show
         when={pty}
         fallback={<main class="rounded overflow-hidden w-[900px] h-[540px] bg-[#2A2F38] flex justify-center items-center">
-          <article class="text-[#828A9A]">Lorem Ipsum</article>
+          <article class="text-[#828A9A]">
+            <span class="font-bold">
+              <span class="italic">Tormonol</span> screen
+            </span>
+          </article>
         </main>}
       >
         {pty => <XtermWrapper pty={pty} key={pty} />}
