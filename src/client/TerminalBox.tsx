@@ -1,4 +1,4 @@
-import { useContext, useEffect, useRef, useState } from 'preact/hooks';
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 import type { Pty } from './pty-proxy.ts';
 import { ModalContext } from './modal.ts';
@@ -181,7 +181,7 @@ export const TerminalBox = () => {
 
     useEffect(() => {
       inputEl.current?.focus();
-    });
+    }, []);
 
     return <div class="mx-4 my-3">
       <div class="text-2xl">
@@ -208,7 +208,7 @@ export const TerminalBox = () => {
     </div>;
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const listen = ({ key, ctrlKey, altKey, shiftKey }: KeyboardEvent) => {
       if (healthy) return;
       if (ctrlKey || altKey || shiftKey) return;
@@ -221,7 +221,7 @@ export const TerminalBox = () => {
     addEventListener('keydown', listen);
 
     return () => removeEventListener('keydown', listen);
-  });
+  }, []);
 
   return <div class="size-fit p-4 grid gap-4">
     <div class="flex justify-between items-center">

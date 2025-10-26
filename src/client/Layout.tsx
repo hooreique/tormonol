@@ -9,12 +9,8 @@ export const Layout = ({ children }: { children: ComponentChildren }) => {
 
   return <div class="relative size-fit mx-auto">
     <ModalContext.Provider value={{
-      set: child => {
-        setModal(child);
-      },
-      clear: () => {
-        setModal(false);
-      },
+      set: child => setModal(child),
+      clear: () => setModal(false),
     }}>
       <section class="size-fit">
         {children}
