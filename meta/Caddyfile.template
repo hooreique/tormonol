@@ -12,12 +12,12 @@ https://www.example.com {
   @static path /favicon.ico /images/* /fonts/*
 
   handle @static {
-    root * /home/caddy/srv/static
+    root * /path/to/tormonol/static
     file_server
   }
 
   handle /build/* {
-    root * /home/caddy/srv
+    root * /path/to/tormonol
     file_server
   }
 
