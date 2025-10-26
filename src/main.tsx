@@ -30,7 +30,7 @@ app.use('/fonts/*', serveStatic({ root: './static' }));
 // '/build' 는 안 숨김
 app.use('/build/*', serveStatic({ root: './' }));
 
-app.use('*', jsxRenderer(({ children }) => <html>
+app.use('*', jsxRenderer(({ children }) => <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />

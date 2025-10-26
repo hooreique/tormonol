@@ -186,7 +186,7 @@ export const TerminalBox = () => {
       <div class="text-2xl">
         <input
           ref={inputEl}
-          type="password" autoComplete="off" size={6} maxLength={6}
+          name="code" type="password" autoComplete="off" size={6} maxLength={6}
           class="w-40 focus:outline-none"
           onKeyDown={({ currentTarget, key }) => {
             if (key === 'Enter') {
