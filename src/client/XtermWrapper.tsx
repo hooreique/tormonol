@@ -19,6 +19,7 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
     const term = new Terminal({
       cols: 100,
       rows: 30,
+      macOptionIsMeta: true,
       scrollback: 0,
       fontFamily: 'Hack Nerd Font',
       theme: {

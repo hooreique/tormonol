@@ -219,18 +219,7 @@ export const TerminalBox = () => {
   };
 
   useLayoutEffect(() => {
-    const listen = ({ key, ctrlKey, altKey, shiftKey }: KeyboardEvent) => {
-      if (healthy) return;
-      if (ctrlKey || altKey || shiftKey) return;
-
-      if (key === 'c') {
-        modal.set(<ConnectModal />);
-      }
-    };
-
-    addEventListener('keydown', listen);
-
-    return () => removeEventListener('keydown', listen);
+    connectButton.current.focus();
   }, []);
 
   return <div class="size-fit p-4 grid gap-4">
@@ -250,6 +239,14 @@ export const TerminalBox = () => {
               ref={connectButton}
               class="cursor-pointer hover:underline focus:outline-none"
               onClick={() => modal.set(<ConnectModal />)}
+              onKeyDown={({ key, ctrlKey, altKey, shiftKey }) => {
+                if (healthy) return;
+                if (ctrlKey || altKey || shiftKey) return;
+
+                if (key === 'c') {
+                  modal.set(<ConnectModal />);
+                }
+              }}
             >
               [
               <span class="italic"><span class="underline">c</span>onnect</span>
