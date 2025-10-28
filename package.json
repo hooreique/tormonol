@@ -18,7 +18,6 @@
     "node-pty": "1.0.0"
   },
   "devDependencies": {
-    "@preact/signals": "2.2.1",
     "@tailwindcss/cli": "4.1.12",
     "@types/node": "20.11.17",
     "@xterm/addon-webgl": "0.18.0",
