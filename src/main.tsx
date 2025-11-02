@@ -176,6 +176,7 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
         TERM: 'xterm-256color',
         COLORTERM: 'truecolor',
         NODE_PTY: '1',
+        USER: process.env.USER,
         XDG_RUNTIME_DIR: process.env.XDG_RUNTIME_DIR,
         DBUS_SESSION_BUS_ADDRESS: process.env.DBUS_SESSION_BUS_ADDRESS,
       },
