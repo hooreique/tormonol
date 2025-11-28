@@ -91,30 +91,44 @@ export const TerminalBox = () => {
 
           ws.addEventListener('open', () => {
             setPty({
-              write: data => {
-                const iv = rand96();
-                encrypt(iv, data)
-                  .then(buf => new Uint8Array(buf))
-                  .then(src => {
-                    const cat = new Uint8Array(12 + src.length);
-                    cat.set(iv, 0);
-                    cat.set(src, 12);
-                    return cat;
-                  })
-                  .then(cat => {
-                    if (WebSocket.OPEN === ws.readyState) {
-                      ws.send(cat);
-                    } else {
-                      console.debug('could not send (writing to pty): no connection');
-                    }
-                  });
-              },
+              write: (() => {
+                let mutex = Promise.resolve();
+
+                return data => {
+                  const iv = rand96();
+
+                  mutex = Promise.all([encrypt(iv, data), mutex])
+                    .then(([buf]) => new Uint8Array(buf))
+                    .then(src => {
+                      const cat = new Uint8Array(12 + src.length);
+                      cat.set(iv, 0);
+                      cat.set(src, 12);
+                      return cat;
+                    })
+                    .then(cat => {
+                      if (WebSocket.OPEN === ws.readyState) {
+                        ws.send(cat);
+                      } else {
+                        console.debug('could not send (writing to pty): no connection');
+                      }
+                    })
+                    .catch(reason => {
+                      console.error('[pty.write]', reason);
+                    });
+                };
+              })(),
               onData: consume => {
+                let mutex = Promise.resolve();
+
                 ws.addEventListener('message', ({ data }) => {
                   const cat = new Uint8Array(data as ArrayBuffer);
-                  decrypt(cat.subarray(0, 12), cat.subarray(12))
-                    .then(buf => new Uint8Array(buf))
-                    .then(consume);
+
+                  mutex = Promise.all([decrypt(cat.subarray(0, 12), cat.subarray(12)), mutex])
+                    .then(([buf]) => new Uint8Array(buf))
+                    .then(consume)
+                    .catch(reason => {
+                      console.error('[ws.onMessage]', reason);
+                    });
                 });
               },
               close: () => ws.close(4000),

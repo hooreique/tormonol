@@ -183,24 +183,32 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
     }))
     .then(pty => ({
       onOpen: (_, ws) => {
-        pty.onData(data => {
-          const iv = rand96();
-          en(iv, te.encode(data))
-            .then(buf => new Uint8Array(buf))
-            .then(src => {
-              const cat = new Uint8Array(12 + src.length);
-              cat.set(iv, 0);
-              cat.set(src, 12);
-              return cat;
-            })
-            .then(cat => {
-              if (WebSocket.OPEN === ws?.readyState) {
-                ws.send(cat);
-              } else {
-                console.debug('could not send (reading from pty): no connection');
-              }
-            });
-        });
+        pty.onData((() => {
+          let mutex = Promise.resolve();
+
+          return data => {
+            const iv = rand96();
+
+            mutex = Promise.all([en(iv, te.encode(data)), mutex])
+              .then(([buf]) => new Uint8Array(buf))
+              .then(src => {
+                const cat = new Uint8Array(12 + src.length);
+                cat.set(iv, 0);
+                cat.set(src, 12);
+                return cat;
+              })
+              .then(cat => {
+                if (WebSocket.OPEN === ws?.readyState) {
+                  ws.send(cat);
+                } else {
+                  console.debug('could not send (reading from pty): no connection');
+                }
+              })
+              .catch(reason => {
+                console.error('[pty.onData]', reason);
+              });
+          };
+        })());
 
         pty.onExit(({ exitCode, signal }) => {
           if (WebSocket.OPEN === ws?.readyState) {
@@ -210,12 +218,20 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
           }
         });
       },
-      onMessage: ({ data }) => {
-        const cat = new Uint8Array(data as ArrayBuffer);
-        de(cat.subarray(0, 12), cat.subarray(12))
-          .then(buf => new Uint8Array(buf))
-          .then(data => pty.write(td.decode(data)));
-      },
+      onMessage: (() => {
+        let mutex = Promise.resolve();
+
+        return ({ data }) => {
+          const cat = new Uint8Array(data as ArrayBuffer);
+
+          mutex = Promise.all([de(cat.subarray(0, 12), cat.subarray(12)), mutex])
+            .then(([buf]) => new Uint8Array(buf))
+            .then(data => pty.write(td.decode(data)))
+            .catch(reason => {
+              console.error('[ws.onMessage]', reason);
+            });
+        };
+      })(),
       onClose: ({ code, reason }) => {
         pty.kill('SIGKILL');
 
