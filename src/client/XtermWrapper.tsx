@@ -1,4 +1,4 @@
-import { useContext, useEffect, useLayoutEffect, useRef } from 'preact/hooks';
+import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 import { Terminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
@@ -14,6 +14,10 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
   const modal = useContext(ModalContext);
 
   const el = useRef<HTMLElement>();
+
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+  const showCursor = () => setIsTyping(false);
+  const hideCursor = () => setIsTyping(true);
 
   useLayoutEffect(() => {
     const term = new Terminal({
@@ -119,11 +123,21 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
 
     term.focus();
 
+    term.onKey(hideCursor);
+    el.current.addEventListener('mousemove', showCursor);
+
     return () => {
+      el.current.removeEventListener('mousemove', showCursor);
       term.dispose();
       pty.close();
     };
   }, []);
 
-  return <main ref={el} class="size-fit rounded overflow-hidden"></main>;
+  return <main ref={el} class={
+    isTyping
+      ?
+      "size-fit rounded overflow-hidden [&_>_.xterm]:!cursor-none"
+      :
+      "size-fit rounded overflow-hidden"
+  }></main>;
 };
