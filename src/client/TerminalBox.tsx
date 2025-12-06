@@ -1,11 +1,14 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
 import type { Pty } from './pty-proxy.ts';
+import { withTrace } from './traceable-fetch.ts';
 import { ModalContext } from './modal.ts';
 import { XtermWrapper } from './XtermWrapper.tsx';
 
 
-const rand96 = () => crypto.getRandomValues(new Uint8Array(12));
+type Fetch = typeof fetch;
+
+const rand96 = (): Uint8Array<ArrayBuffer> => crypto.getRandomValues(new Uint8Array(12));
 
 const te = new TextEncoder();
 
@@ -30,7 +33,7 @@ export const TerminalBox = () => {
 
   const disconnect = useRef<() => void>(() => undefined);
 
-  const connect = (pri: ArrayBuffer) => Promise.all([
+  const connect = (pri: ArrayBuffer, fetch: Fetch): Promise<void> => Promise.all([
     fetch('/api/nonce', { method: 'post' }).then(res => {
       if (res.ok) return res.text();
       else throw { message: 'response is not ok' };
@@ -158,7 +161,7 @@ export const TerminalBox = () => {
           });
         })));
 
-  const enter = (password: string) => {
+  const enter = (password: string): Promise<ArrayBuffer> => {
     if (!password) {
       return Promise.reject({ message: 'password must not be empty' });
     }
@@ -196,8 +199,7 @@ export const TerminalBox = () => {
       .then(key => crypto.subtle.decrypt({ name: 'AES-GCM', iv: blandVect }, key, Uint8Array.fromBase64(encpri)))
       .catch(() => {
         throw { message: 'wrong password' };
-      })
-      .then(connect);
+      });
   };
 
   const ConnectModal = () => {
@@ -216,6 +218,7 @@ export const TerminalBox = () => {
           onKeyDown={({ currentTarget, key }) => {
             if (key === 'Enter') {
               enter(currentTarget.value)
+                .then(pri => connect(pri, withTrace(fetch)))
                 .then(() => {
                   modal.clear();
                 })

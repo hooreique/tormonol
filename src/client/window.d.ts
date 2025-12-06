@@ -1,6 +1,7 @@
 declare global {
   interface Uint8Array {
     toBase64(): string;
+    toHex(): string;
   }
 
   interface Uint8ArrayConstructor {
