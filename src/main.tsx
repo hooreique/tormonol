@@ -192,9 +192,10 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
             mutex = Promise.all([en(iv, te.encode(data)), mutex])
               .then(([buf]) => new Uint8Array(buf))
               .then(src => {
-                const cat = new Uint8Array(12 + src.length);
-                cat.set(iv, 0);
-                cat.set(src, 12);
+                const cat = new Uint8Array(1 + 12 + src.length);
+                cat[0] = 0;
+                cat.set(iv, 1);
+                cat.set(src, 13);
                 return cat;
               })
               .then(cat => {
@@ -224,7 +225,7 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
         return ({ data }) => {
           const cat = new Uint8Array(data as ArrayBuffer);
 
-          mutex = Promise.all([de(cat.subarray(0, 12), cat.subarray(12)), mutex])
+          mutex = Promise.all([de(cat.subarray(1, 13), cat.subarray(13)), mutex])
             .then(([buf]) => new Uint8Array(buf))
             .then(data => pty.write(td.decode(data)))
             .catch(reason => {
