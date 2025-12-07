@@ -1,10 +1,11 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
-import type { Integer } from '../integers.ts';
-import { isInteger } from '../integers.ts';
+import type { NaturalNumber } from '../natural-number.ts';
+import { isNaturalNumber } from '../natural-number.ts';
 
 import type { Pty } from './pty-proxy.ts';
 import { withTrace } from './traceable-fetch.ts';
+import { ViewportWidthContext } from './viewport-size.tsx';
 import { ModalContext } from './modal.ts';
 import { XtermWrapper } from './XtermWrapper.tsx';
 
@@ -24,6 +25,7 @@ const DN: Readonly<Uint8Array> = te.encode('server -> client');
 
 export const TerminalBox = () => {
   const modal = useContext(ModalContext);
+  const { isSmall } = useContext(ViewportWidthContext);
 
   const connectButton = useRef<HTMLButtonElement>();
 
@@ -87,6 +89,7 @@ export const TerminalBox = () => {
         .then(sig => {
           const endpoint = new URL('/sockets/' + encodeURIComponent(id), location.origin);
           endpoint.searchParams.set('token', sig);
+          endpoint.searchParams.set('dimensions', isSmall ? '40,20' : '100,30');
           const ws = new WebSocket(endpoint);
           ws.binaryType = 'arraybuffer';
           return ws;
@@ -140,7 +143,7 @@ export const TerminalBox = () => {
                     });
                 });
               },
-              resize: (cols: Integer, rows: Integer) => {
+              resize: (cols: NaturalNumber, rows: NaturalNumber) => {
                 const data = te.encode(`${cols},${rows}`);
                 const cat = new Uint8Array(1 + data.length);
                 cat[0] = 1;
@@ -157,7 +160,7 @@ export const TerminalBox = () => {
                   if (cat[0] !== 1) return;
 
                   const str = td.decode(cat.subarray(1));
-                  const [cols, rows, never] = str.split(',').map(Number).filter(isInteger);
+                  const [cols, rows, never] = str.split(',').map(Number).filter(isNaturalNumber);
 
                   if (rows === undefined || never !== undefined) {
                     console.warn(`[ws.onMessage] Bad Resize: ${str}`);
@@ -272,7 +275,7 @@ export const TerminalBox = () => {
     connectButton.current.focus();
   }, []);
 
-  return <div class="size-fit p-4 grid gap-4">
+  return <div class="size-fit py-4 grid gap-4">
     <div class="flex justify-between items-center">
       <div>
         {
@@ -328,7 +331,11 @@ export const TerminalBox = () => {
           ?
           <XtermWrapper pty={pty} key={ptyId} />
           :
-          <main class="rounded overflow-hidden w-[900px] h-[540px] bg-[#2A2F38] flex justify-center items-center">
+          <main class={
+            'rounded overflow-hidden bg-[#2A2F38] flex justify-center items-center'
+            +
+            (isSmall ? ' w-[360px] h-[360px]' : ' w-[900px] h-[540px]')
+          }>
             <article class="text-[#828A9A]">
               <span class="font-bold">
                 <span class="italic">Tormonol</span> screen

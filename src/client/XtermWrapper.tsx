@@ -3,7 +3,10 @@ import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact
 import { Terminal } from '@xterm/xterm';
 import { WebglAddon } from '@xterm/addon-webgl';
 
+import type { NaturalNumber } from '../natural-number.ts';
+
 import type { Pty } from './pty-proxy.ts';
+import { ViewportWidthContext } from './viewport-size.tsx';
 import { ModalContext } from './modal.ts';
 
 
@@ -12,6 +15,12 @@ const td = new TextDecoder();
 
 export const XtermWrapper = ({ pty }: { pty: Pty }) => {
   const modal = useContext(ModalContext);
+  const { isSmall } = useContext(ViewportWidthContext);
+  const resize = useRef<(isSmall: boolean) => void>(() => undefined);
+
+  useEffect(() => {
+    resize.current(isSmall);
+  }, [isSmall]);
 
   const el = useRef<HTMLElement>();
 
@@ -21,8 +30,8 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
 
   useLayoutEffect(() => {
     const term = new Terminal({
-      cols: 100,
-      rows: 30,
+      cols: isSmall ? 40 : 100,
+      rows: isSmall ? 20 : 30,
       macOptionIsMeta: true,
       scrollback: 0,
       fontFamily: 'Hack Nerd Font',
@@ -119,6 +128,12 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
       term.write(data);
     });
 
+    resize.current = isSmall => {
+      const cols = (isSmall ? 40 : 100) as NaturalNumber;
+      const rows = (isSmall ? 20 : 30) as NaturalNumber;
+      pty.resize(cols, rows);
+    };
+
     pty.onResize((cols, rows) => {
       term.resize(cols, rows);
     });
@@ -138,10 +153,8 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
   }, []);
 
   return <main ref={el} class={
-    isTyping
-      ?
-      "size-fit rounded overflow-hidden [&_>_.xterm]:!cursor-none"
-      :
-      "size-fit rounded overflow-hidden"
+    'rounded size-fit overflow-hidden'
+    +
+    (isTyping ? ' [&_>_.xterm]:!cursor-none' : '')
   }></main>;
 };

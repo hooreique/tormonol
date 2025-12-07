@@ -12,7 +12,7 @@ import { createNodeWebSocket } from '@hono/node-ws';
 
 import { spawn } from 'node-pty';
 
-import { isInteger } from '../integers.js';
+import { isNaturalNumber } from '../natural-number.js';
 import { ttlSet } from './ttl-set.js';
 
 
@@ -156,9 +156,10 @@ const { injectWebSocket, upgradeWebSocket } = createNodeWebSocket({ app });
 app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
   req.param('id'),
   req.query('token') || Promise.reject({ message: 'token is required' }),
+  (req.query('dimensions') || '100,30').split(',').map(Number).filter(isNaturalNumber),
   crypts.get(req.param('id')) ?? Promise.reject({ message: 'socket not found' }),
 ])
-  .then(([id, sig, { en, de }]) => pub
+  .then(([id, sig, [cols, rows], { en, de }]) => pub
     .then(key => webcrypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, key, Buffer.from(sig, 'base64'), Buffer.from(id, 'base64')))
     .then(isValid => {
       if (isValid) {
@@ -169,9 +170,9 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
       }
     })
     .then(() => spawn(`${process.env.HOME}/.nix-profile/bin/zsh`, [], {
+      cols: (cols && rows) ? cols : 100,
+      rows: (cols && rows) ? rows : 30,
       name: 'xterm-256color',
-      cols: 100,
-      rows: 30,
       cwd: process.env.HOME,
       env: {
         PATH: `${process.env.HOME}/.nix-profile/bin:/usr/bin`,
@@ -235,7 +236,7 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
           },
           (cat: Uint8Array, ws: WSContext<WebSocket>): void => {
             const str = td.decode(cat.subarray(1));
-            const [cols, rows, never] = str.split(',').map(Number).filter(isInteger);
+            const [cols, rows, never] = str.split(',').map(Number).filter(isNaturalNumber);
 
             if (rows === undefined || never !== undefined) {
               console.warn(`[ws.onMessage] Bad Resize: ${str}`);
