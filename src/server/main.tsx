@@ -3,6 +3,7 @@ import process from 'node:process';
 import { readFile } from 'node:fs/promises';
 import { webcrypto } from 'node:crypto';
 
+import type { WSContext } from 'hono/ws';
 import { Hono } from 'hono';
 import { jsxRenderer } from 'hono/jsx-renderer';
 import { serve } from '@hono/node-server';
@@ -11,6 +12,7 @@ import { createNodeWebSocket } from '@hono/node-ws';
 
 import { spawn } from 'node-pty';
 
+import { isInteger } from '../integers.js';
 import { ttlSet } from './ttl-set.js';
 
 
@@ -222,15 +224,42 @@ app.get('/sockets/:id', upgradeWebSocket(({ req }) => Promise.all([
       onMessage: (() => {
         let mutex = Promise.resolve();
 
-        return ({ data }) => {
+        const handle = [
+          (cat: Uint8Array): void => {
+            mutex = Promise.all([de(cat.subarray(1, 13), cat.subarray(13)), mutex])
+              .then(([buf]) => new Uint8Array(buf))
+              .then(data => pty.write(td.decode(data)))
+              .catch(reason => {
+                console.error('[ws.onMessage]', reason);
+              });
+          },
+          (cat: Uint8Array, ws: WSContext<WebSocket>): void => {
+            const str = td.decode(cat.subarray(1));
+            const [cols, rows, never] = str.split(',').map(Number).filter(isInteger);
+
+            if (rows === undefined || never !== undefined) {
+              console.warn(`[ws.onMessage] Bad Resize: ${str}`);
+              return;
+            }
+
+            pty.resize(cols, rows);
+
+            if (WebSocket.OPEN === ws?.readyState) {
+              ws.send(cat);
+            } else {
+              console.debug('could not send (reading from pty): no connection');
+            }
+          },
+        ] as const;
+
+        return ({ data }, ws) => {
           const cat = new Uint8Array(data as ArrayBuffer);
 
-          mutex = Promise.all([de(cat.subarray(1, 13), cat.subarray(13)), mutex])
-            .then(([buf]) => new Uint8Array(buf))
-            .then(data => pty.write(td.decode(data)))
-            .catch(reason => {
-              console.error('[ws.onMessage]', reason);
-            });
+          const messageType = cat[0];
+
+          (handle[messageType] ?? (() => {
+            console.warn('[ws.onMessage] Unknown Message Type:', messageType);
+          }))(cat, ws);
         };
       })(),
       onClose: ({ code, reason }) => {

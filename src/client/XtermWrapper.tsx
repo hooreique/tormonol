@@ -119,6 +119,10 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
       term.write(data);
     });
 
+    pty.onResize((cols, rows) => {
+      term.resize(cols, rows);
+    });
+
     term.open(el.current);
 
     term.focus();

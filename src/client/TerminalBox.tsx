@@ -1,5 +1,8 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
+import type { Integer } from '../integers.ts';
+import { isInteger } from '../integers.ts';
+
 import type { Pty } from './pty-proxy.ts';
 import { withTrace } from './traceable-fetch.ts';
 import { ModalContext } from './modal.ts';
@@ -11,6 +14,7 @@ type Fetch = typeof fetch;
 const rand96 = (): Uint8Array<ArrayBuffer> => crypto.getRandomValues(new Uint8Array(12));
 
 const te = new TextEncoder();
+const td = new TextDecoder();
 
 const blandSalt = te.encode('bland-salt');
 const blandVect = te.encode('bland-vect');
@@ -126,6 +130,7 @@ export const TerminalBox = () => {
 
                 ws.addEventListener('message', ({ data }) => {
                   const cat = new Uint8Array(data as ArrayBuffer);
+                  if (cat[0] !== 0) return;
 
                   mutex = Promise.all([decrypt(cat.subarray(1, 13), cat.subarray(13)), mutex])
                     .then(([buf]) => new Uint8Array(buf))
@@ -133,6 +138,33 @@ export const TerminalBox = () => {
                     .catch(reason => {
                       console.error('[ws.onMessage]', reason);
                     });
+                });
+              },
+              resize: (cols: Integer, rows: Integer) => {
+                const data = te.encode(`${cols},${rows}`);
+                const cat = new Uint8Array(1 + data.length);
+                cat[0] = 1;
+                cat.set(data, 1);
+                if (WebSocket.OPEN === ws.readyState) {
+                  ws.send(cat);
+                } else {
+                  console.debug('could not send (writing to pty): no connection');
+                }
+              },
+              onResize: adapt => {
+                ws.addEventListener('message', ({ data }) => {
+                  const cat = new Uint8Array(data as ArrayBuffer);
+                  if (cat[0] !== 1) return;
+
+                  const str = td.decode(cat.subarray(1));
+                  const [cols, rows, never] = str.split(',').map(Number).filter(isInteger);
+
+                  if (rows === undefined || never !== undefined) {
+                    console.warn(`[ws.onMessage] Bad Resize: ${str}`);
+                    return;
+                  }
+
+                  adapt(cols, rows);
                 });
               },
               close: () => ws.close(4000),
