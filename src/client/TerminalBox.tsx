@@ -89,7 +89,7 @@ export const TerminalBox = () => {
         .then(sig => {
           const endpoint = new URL('/sockets/' + encodeURIComponent(id), location.origin);
           endpoint.searchParams.set('token', sig);
-          endpoint.searchParams.set('dimensions', isSmall ? '40,20' : '100,30');
+          endpoint.searchParams.set('dimensions', isSmall ? '40,16' : '100,30');
           const ws = new WebSocket(endpoint);
           ws.binaryType = 'arraybuffer';
           return ws;
@@ -312,7 +312,7 @@ export const TerminalBox = () => {
           <main class={
             'rounded overflow-hidden bg-[#2A2F38] flex justify-center items-center'
             +
-            (isSmall ? ' w-[360px] h-[360px]' : ' w-[900px] h-[540px]')
+            (isSmall ? ' w-[360px] h-[288px]' : ' w-[900px] h-[540px]')
           }>
             <nav class="text-[#5A6477] text-center font-bold cursor-default">
               <span class="text-[#828A9A] italic">Tormonol</span>

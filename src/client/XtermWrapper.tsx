@@ -31,7 +31,7 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
   useLayoutEffect(() => {
     const term = new Terminal({
       cols: isSmall ? 40 : 100,
-      rows: isSmall ? 20 : 30,
+      rows: isSmall ? 16 : 30,
       macOptionIsMeta: true,
       scrollback: 0,
       fontFamily: 'Hack Nerd Font',
@@ -130,7 +130,7 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
 
     resize.current = isSmall => {
       const cols = (isSmall ? 40 : 100) as NaturalNumber;
-      const rows = (isSmall ? 20 : 30) as NaturalNumber;
+      const rows = (isSmall ? 16 : 30) as NaturalNumber;
       pty.resize(cols, rows);
     };
 
