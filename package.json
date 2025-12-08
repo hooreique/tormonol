@@ -3,10 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "cp-html": "mkdir -p build && cp src/*.html build/",
     "cp-xterm-css": "mkdir -p build && cp node_modules/@xterm/xterm/css/xterm.css build/xterm.css",
     "build-tw": "tailwindcss -i src/style.css -o build/style.css",
     "build-es": "esbuild --bundle --outfile=build/client/app.js --tsconfig=tsconfig.esbuild.json src/client/app.tsx",
-    "prepare": "pnpm run cp-xterm-css & pnpm run build-tw & pnpm run build-es & wait",
+    "prepare": "pnpm run cp-html & pnpm run cp-xterm-css & pnpm run build-tw & pnpm run build-es & wait",
     "dev": "tsx watch --tsconfig tsconfig.hono.json src/server/main.tsx",
     "build": "pnpm run prepare & tsc --project tsconfig.hono.json & wait",
     "start": "node out/server/main.js"

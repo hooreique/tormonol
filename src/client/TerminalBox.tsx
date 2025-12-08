@@ -202,28 +202,6 @@ export const TerminalBox = () => {
       return Promise.reject({ message: 'password must not be empty' });
     }
 
-    // const pri = localStorage.getItem('pri');
-    // console.info('pri:', pri);
-    // const arr = pri.trim().split('\n');
-    // arr.pop();
-    // arr.shift();
-    // const data = Uint8Array.fromBase64(arr.join(''));
-
-    // const pri = localStorage.getItem('pri');
-    // console.info('pri:', pri);
-    // const data = Uint8Array.fromBase64(pri);
-    // console.info('data:', data);
-    // crypto.subtle.importKey('raw', te.encode(password), 'PBKDF2', false, ['deriveKey'])
-    //   .then(key => crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt: blandSalt, iterations: 300_000 }, key, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']))
-    //   .then(key => crypto.subtle.encrypt({ name: 'AES-GCM', iv: blandVect }, key, data))
-    //   .then(enc => new Uint8Array(enc).toBase64())
-    //   .then(encPri => localStorage.setItem('encpri', encPri))
-    //   .then(() => {
-    //     const encPri = localStorage.getItem('encpri');
-    //     console.info('encPri:', encPri);
-    //   });
-    // return Promise.resolve();
-
     const encpri = localStorage.getItem('encpri');
 
     if (!encpri) {
@@ -336,11 +314,13 @@ export const TerminalBox = () => {
             +
             (isSmall ? ' w-[360px] h-[360px]' : ' w-[900px] h-[540px]')
           }>
-            <article class="text-[#828A9A]">
-              <span class="font-bold">
-                <span class="italic">Tormonol</span> screen
-              </span>
-            </article>
+            <nav class="text-[#5A6477] text-center font-bold cursor-default">
+              <span class="text-[#828A9A] italic">Tormonol</span>
+              <br />
+              <span>-</span>
+              <br />
+              <a href="/build/story.html" class="hover:underline">Story</a>
+            </nav>
           </main>
       }
     </div>

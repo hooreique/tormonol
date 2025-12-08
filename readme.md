@@ -47,6 +47,7 @@ nix develop --command pnpm install
 
 ```bash
 { find src/client -type f
+  echo src/*.html
   echo src/style.css
 } | entr -r nix develop --command bash -c "pnpm run prepare & pnpm run dev"
 ```
