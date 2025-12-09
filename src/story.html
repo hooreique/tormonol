@@ -96,12 +96,12 @@
       }, svMsg);
     };
 
-    privateKey.addEventListener('keydown', ({key}) => {
-      if (key === 'Enter') passphrase.focus();
+    privateKey.addEventListener('keydown', ({key, ctrlKey, altKey, shiftKey}) => {
+      if (key === 'Enter' && !ctrlKey && !altKey && !shiftKey) passphrase.focus();
     });
 
-    passphrase.addEventListener('keydown', ({key}) => {
-      if (key === 'Enter') save();
+    passphrase.addEventListener('keydown', ({key, ctrlKey, altKey, shiftKey}) => {
+      if (key === 'Enter' && !ctrlKey && !altKey && !shiftKey) save();
     });
 
     document.querySelector('#sv-btn').addEventListener('click', save);
