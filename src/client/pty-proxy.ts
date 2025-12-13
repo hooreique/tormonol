@@ -1,4 +1,4 @@
-import type { Integer } from '../integers.ts';
+import type { NaturalNumber } from '../natural-number.ts';
 
 /**
  * 터미널 백엔드 (Pseudoterminal) 인터페이스
@@ -21,13 +21,13 @@ export type Pty = {
    * @param cols 가로 셀 수
    * @param rows 세로 셀 수
    */
-  readonly resize: (cols: Integer, rows: Integer) => void;
+  readonly resize: (cols: NaturalNumber, rows: NaturalNumber) => void;
 
   /**
    * Pty 로부터 온 Resize 이벤트를 처리할 함수를 등록합니다.
    * @param adapt Pty 로부터 온 Resize 이벤트를 처리할 함수
    */
-  readonly onResize: (adapt: (cols: Integer, rows: Integer) => void) => void;
+  readonly onResize: (adapt: (cols: NaturalNumber, rows: NaturalNumber) => void) => void;
 
   /**
    * Pty 와의 통신을 종료합니다.
