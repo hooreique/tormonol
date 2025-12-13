@@ -1,5 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 
+import type { Mutex } from '../mutex.ts';
 import type { NaturalNumber } from '../natural-number.ts';
 import { isNaturalNumber } from '../natural-number.ts';
 
@@ -23,9 +24,12 @@ const blandVect = te.encode('bland-vect');
 const UP: Readonly<Uint8Array> = te.encode('client -> server');
 const DN: Readonly<Uint8Array> = te.encode('server -> client');
 
-export const TerminalBox = () => {
+export const TerminalBox = ({ bellMutex }: {
+  readonly bellMutex: Mutex;
+}) => {
   const modal = useContext(ModalContext);
   const { isSmall } = useContext(ViewportWidthContext);
+  const [bellStep, setBellStep] = useState<0 | 1 | 2>(0);
 
   const connectButton = useRef<HTMLButtonElement>();
 
@@ -286,6 +290,18 @@ export const TerminalBox = () => {
         }
       </div>
 
+      {bellStep === 0
+        ?
+        undefined
+        :
+        <div class={
+          "text-sm rounded"
+          +
+          (bellStep === 1 ? " border border-red-500 bg-red-900" : "")
+        }>
+          🚨
+        </div>}
+
       <div>
         {
           pty
@@ -307,7 +323,19 @@ export const TerminalBox = () => {
       {
         pty
           ?
-          <XtermWrapper pty={pty} key={ptyId} />
+          <XtermWrapper
+            pty={pty}
+            handleBell={() => bellMutex(() => new Promise(resolve => {
+              setBellStep(1);
+              setTimeout(() => {
+                setBellStep(2);
+                setTimeout(() => {
+                  setBellStep(0);
+                  resolve();
+                }, 900);
+              }, 100);
+            }))}
+            key={ptyId} />
           :
           <main class={
             'rounded overflow-hidden bg-[#2A2F38] flex justify-center items-center'

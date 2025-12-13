@@ -13,7 +13,10 @@ import { ModalContext } from './modal.ts';
 const te = new TextEncoder();
 const td = new TextDecoder();
 
-export const XtermWrapper = ({ pty }: { pty: Pty }) => {
+export const XtermWrapper = ({ pty, handleBell }: {
+  readonly pty: Pty;
+  readonly handleBell: () => void;
+}) => {
   const modal = useContext(ModalContext);
   const { isSmall } = useContext(ViewportWidthContext);
   const resize = useRef<(isSmall: boolean) => void>(() => undefined);
@@ -59,6 +62,18 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
         brightWhite: '#E1E3E4',
       },
     });
+
+    term.loadAddon(new WebglAddon());
+
+    term.onData(str => {
+      pty.write(te.encode(str));
+    });
+
+    pty.onData(data => {
+      term.write(data);
+    });
+
+    const bellHandle = term.onBell(handleBell);
 
     const CopyModal = ({ text }: { text: string }) => {
       const copyBtn = useRef<HTMLButtonElement>();
@@ -118,16 +133,6 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
       return true;
     });
 
-    term.loadAddon(new WebglAddon());
-
-    term.onData(str => {
-      pty.write(te.encode(str));
-    });
-
-    pty.onData(data => {
-      term.write(data);
-    });
-
     resize.current = isSmall => {
       const cols = (isSmall ? 40 : 100) as NaturalNumber;
       const rows = (isSmall ? 16 : 30) as NaturalNumber;
@@ -147,6 +152,7 @@ export const XtermWrapper = ({ pty }: { pty: Pty }) => {
 
     return () => {
       el.current.removeEventListener('mousemove', showCursor);
+      bellHandle.dispose();
       term.dispose();
       pty.close();
     };
