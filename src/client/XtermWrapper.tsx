@@ -13,10 +13,11 @@ import { ModalContext } from './modal.ts';
 const te = new TextEncoder();
 const td = new TextDecoder();
 
-export const XtermWrapper = ({ pty, handleBell, forwardInput }: {
+export const XtermWrapper = ({ pty, handleBell, forwardInput, forwardFocus }: {
   readonly pty: Pty;
   readonly handleBell: () => void;
   readonly forwardInput: (input: (str: string) => void) => void;
+  readonly forwardFocus: (focus: () => void) => void;
 }) => {
   const modal = useContext(ModalContext);
   const { isSmall } = useContext(ViewportWidthContext);
@@ -76,9 +77,9 @@ export const XtermWrapper = ({ pty, handleBell, forwardInput }: {
 
     const bellHandle = term.onBell(handleBell);
 
-    forwardInput(str => {
-      term.input(str);
-    });
+    forwardInput(str => term.input(str));
+
+    forwardFocus(() => term.focus());
 
     const CopyModal = ({ text }: { text: string }) => {
       const copyBtn = useRef<HTMLButtonElement>();

@@ -35,8 +35,8 @@ export const TerminalBox = ({ bellMutex }: {
   const { isSmall } = useContext(ViewportWidthContext);
 
   const [bellStep, setBellStep] = useState<0 | 1 | 2>(0);
-
   const forwardedInput = useRef<((str: string) => void) | false>(false);
+  const forwardedFocus = useRef<(() => void) | false>(false);
 
   const connectButton = useRef<HTMLButtonElement>();
 
@@ -345,6 +345,9 @@ export const TerminalBox = ({ bellMutex }: {
             forwardInput={input => {
               forwardedInput.current = input;
             }}
+            forwardFocus={focus => {
+              forwardedFocus.current = focus;
+            }}
             key={ptyId} />
           :
           <main class={
@@ -369,7 +372,7 @@ export const TerminalBox = ({ bellMutex }: {
         if (forwardedInput.current) forwardedInput.current(str);
       }}>
         <div class="grid gap-4">
-          <div class="flex gap-4">
+          <div class="flex gap-4 justify-center">
             <VkBtn vk={VK.ESC} />
             <VkBtn vk={VK.LEFT} />
             <VkBtn vk={VK.DOWN} />
@@ -378,19 +381,25 @@ export const TerminalBox = ({ bellMutex }: {
             <VkBtn vk={VK.CR} />
           </div>
 
-          <div class="flex gap-4">
+          <div class="flex gap-4 justify-center">
             <VkBtn vk={VK.HOME} />
             <VkBtn vk={VK.PGDN} />
             <VkBtn vk={VK.PGUP} />
             <VkBtn vk={VK.END} />
           </div>
 
-          <div class="flex gap-4">
+          <div class="flex gap-4 justify-center">
             <VkBtn vk={VK.DEL} />
             <VkBtn vk={VK.BS} />
+            <button
+              onClick={() => {
+                if (forwardedFocus.current) forwardedFocus.current();
+              }}
+              class="inline-block px-3 py-1 rounded border border-gray-500 cursor-pointer hover:border-gray-400 bg-gray-700"
+            >Return Focus</button>
           </div>
 
-          <div class="flex gap-4">
+          <div class="flex gap-4 justify-center">
             <VkBtn vk={VK.CTRL} />
             <VkBtn vk={VK.META} />
           </div>

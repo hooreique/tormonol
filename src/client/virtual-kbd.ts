@@ -1,5 +1,6 @@
 declare const azFlag: unique symbol;
 
+/** `[a-zA-Z]` 를 만족하는 문자열 */
 export type A_Z = string & { [azFlag]: never };
 
 export const toAZ = (str: string): A_Z => {
@@ -9,7 +10,17 @@ export const toAZ = (str: string): A_Z => {
   return str as A_Z;
 };
 
-export const VK = {
+export type Vk =
+  | {
+    readonly v: string;
+    readonly label: string;
+  }
+  | {
+    readonly v: (suffix: A_Z) => string;
+    readonly label: string;
+  };
+
+export const VK: Readonly<Record<string, Vk>> = {
   ESC: { v: '\x1b', label: 'Escape' },
   CR: { v: '\r', label: 'Return' },
   UP: { v: '\x1b[A', label: '↑' },
@@ -23,14 +34,12 @@ export const VK = {
   DEL: { v: '\x1b[3~', label: 'Delete' },
   BS: { v: '\x7f', label: 'Backspace' },
   CTRL: {
-    v: (suffix: A_Z): string => String.fromCharCode(suffix.toUpperCase().charCodeAt(0) - 64),
+    v: suffix => String.fromCharCode(suffix.toUpperCase().charCodeAt(0) - 64),
     label: 'Ctrl',
   },
   META: {
-    v: (suffix: A_Z): string => '\x1b' + suffix.toLowerCase(),
+    v: suffix => '\x1b' + suffix.toLowerCase(),
     label: 'Meta',
   },
-} as const;
-
-export type Vk = typeof VK[keyof typeof VK];
+};
 

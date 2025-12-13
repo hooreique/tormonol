@@ -19,14 +19,16 @@ export const VkBtn = ({ vk }: { readonly vk: Vk }) => {
         return;
       }
 
-      new Promise(resolve => modal.set(<VkSuffixWaiter prefix={vk.label} resolve={resolve} />))
+      new Promise((resolve, reject) => modal.set(<VkSuffixWaiter
+        prefix={vk.label} resolve={resolve} reject={reject}
+      />))
         .then(toAZ)
         .then(vk.v)
         .then(input)
-        .catch(reason => alert(reason?.message ?? 'something went wrong'))
+        .catch(console.debug)
         .finally(modal.clear);
     }}
-    class="inline-block px-3 py-1 rounded border border-gray-500"
+    class="inline-block min-w-[2em] px-2 py-1 rounded border border-gray-500 cursor-pointer hover:border-gray-400"
   >
     <kbd>{vk.label}</kbd>{typeof vk.v === 'function' ? " + …" : ""}
   </button>;
