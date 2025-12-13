@@ -5,6 +5,9 @@ import type { NaturalNumber } from '../natural-number.ts';
 import { isNaturalNumber } from '../natural-number.ts';
 
 import type { Pty } from './pty-proxy.ts';
+import { VK } from './virtual-kbd.ts';
+import { Input } from './vk-handling-context.ts';
+import { VkBtn } from './VkBtn.tsx';
 import { withTrace } from './traceable-fetch.ts';
 import { ViewportWidthContext } from './viewport-size.tsx';
 import { ModalContext } from './modal.ts';
@@ -28,8 +31,12 @@ export const TerminalBox = ({ bellMutex }: {
   readonly bellMutex: Mutex;
 }) => {
   const modal = useContext(ModalContext);
+
   const { isSmall } = useContext(ViewportWidthContext);
+
   const [bellStep, setBellStep] = useState<0 | 1 | 2>(0);
+
+  const forwardedInput = useRef<((str: string) => void) | false>(false);
 
   const connectButton = useRef<HTMLButtonElement>();
 
@@ -335,6 +342,9 @@ export const TerminalBox = ({ bellMutex }: {
                 }, 900);
               }, 100);
             }))}
+            forwardInput={input => {
+              forwardedInput.current = input;
+            }}
             key={ptyId} />
           :
           <main class={
@@ -352,5 +362,41 @@ export const TerminalBox = ({ bellMutex }: {
           </main>
       }
     </div>
+
+    {healthy
+      ?
+      <Input.Provider value={str => {
+        if (forwardedInput.current) forwardedInput.current(str);
+      }}>
+        <div class="grid gap-4">
+          <div class="flex gap-4">
+            <VkBtn vk={VK.ESC} />
+            <VkBtn vk={VK.LEFT} />
+            <VkBtn vk={VK.DOWN} />
+            <VkBtn vk={VK.UP} />
+            <VkBtn vk={VK.RIGHT} />
+            <VkBtn vk={VK.CR} />
+          </div>
+
+          <div class="flex gap-4">
+            <VkBtn vk={VK.HOME} />
+            <VkBtn vk={VK.PGDN} />
+            <VkBtn vk={VK.PGUP} />
+            <VkBtn vk={VK.END} />
+          </div>
+
+          <div class="flex gap-4">
+            <VkBtn vk={VK.DEL} />
+            <VkBtn vk={VK.BS} />
+          </div>
+
+          <div class="flex gap-4">
+            <VkBtn vk={VK.CTRL} />
+            <VkBtn vk={VK.META} />
+          </div>
+        </div>
+      </Input.Provider>
+      :
+      undefined}
   </div>;
 };
